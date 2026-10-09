@@ -227,7 +227,7 @@ fn background_spans<'a>(
     row: &'a [CellData],
     columns: std::ops::Range<usize>,
     theme: &'a Theme,
-) -> impl Iterator<Item = (usize, usize, u32)> + 'a {
+) -> impl Iterator<Item = (usize, usize, u32, bool)> + 'a {
     // A wide glyph's continuation cell shows the glyph's background, as a host
     // terminal does: Herdr's ANSI renderer never draws that cell, so its own
     // background is not meant to be seen. Like that renderer, a halfwidth
@@ -244,13 +244,14 @@ fn background_spans<'a>(
                 )
             )
     };
+    // The color, and whether it is the default background.
     let bg = move |x: usize| {
         let x = if x > 0 && wide(&row[x - 1].symbol) {
             x - 1
         } else {
             x
         };
-        cell_colors(&row[x], theme).1
+        (cell_colors(&row[x], theme).1, default_background(&row[x]))
     };
     let mut start = columns.start;
     let stop = columns.end.min(row.len());
@@ -261,7 +262,7 @@ fn background_spans<'a>(
         while end < stop && bg(end) == color {
             end += 1;
         }
-        let span = (start, end, color);
+        let span = (start, end, color.0, color.1);
         start = end;
         Some(span)
     })
@@ -534,7 +535,7 @@ impl TerminalPainter {
                     let y = range.start / width;
                     let row = &frame.cells[y * width..((y + 1) * width).min(frame.cells.len())];
                     let columns = range.start - y * width..range.end - y * width;
-                    let mut paint = |start: usize, end: usize, color| {
+                    let mut paint = |start: usize, end: usize, color, default: bool| {
                         let right = if end == usize::from(frame.width) {
                             background.width
                         } else {
@@ -556,7 +557,7 @@ impl TerminalPainter {
                         );
                         // The default background lets a window picture show
                         // through; colors a program chose stay solid.
-                        let fill_color = if color == self.theme.background {
+                        let fill_color = if default {
                             self.theme.panel(color)
                         } else {
                             rgb(color).into()
@@ -568,12 +569,19 @@ impl TerminalPainter {
                         }
                     };
                     if cached {
-                        for (start, end, color) in background_spans(row, columns, &self.theme) {
-                            paint(start, end, color);
+                        for (start, end, color, default) in
+                            background_spans(row, columns, &self.theme)
+                        {
+                            paint(start, end, color, default);
                         }
                     } else {
                         for x in columns {
-                            paint(x, x + 1, cell_colors(&row[x], &self.theme).1);
+                            paint(
+                                x,
+                                x + 1,
+                                cell_colors(&row[x], &self.theme).1,
+                                default_background(&row[x]),
+                            );
                         }
                     }
                 }

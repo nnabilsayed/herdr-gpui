@@ -423,6 +423,14 @@ pub fn cell_colors(cell: &CellData, theme: &Theme) -> (u32, u32) {
     (fg, bg)
 }
 
+/// Whether the cell's background is the theme's default one, which a window
+/// picture may show through. An explicit color that happens to equal the theme
+/// background is not, and neither is a reversed cell, whose background is its
+/// foreground.
+pub fn default_background(cell: &CellData) -> bool {
+    cell.modifier & REVERSED == 0 && is_default(cell.bg)
+}
+
 pub fn viewport(width: f32, height: f32, cell_width: f32, cell_height: f32) -> ClientSurfaceSize {
     let cols = (width / cell_width.max(1.)).floor().clamp(1., 4096.) as u16;
     let rows = (height / cell_height.max(1.)).floor().clamp(1., 4096.) as u16;
