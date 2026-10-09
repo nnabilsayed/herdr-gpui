@@ -55,6 +55,7 @@ pub(super) enum Section {
     Notifications,
     StatusBar,
     Integrations,
+    Code,
     #[cfg(feature = "cloud")]
     CloudDevices,
     General,
@@ -70,6 +71,7 @@ impl Section {
         Self::Notifications,
         Self::StatusBar,
         Self::Integrations,
+        Self::Code,
         #[cfg(feature = "cloud")]
         Self::CloudDevices,
         Self::General,
@@ -85,6 +87,7 @@ impl Section {
             Self::Notifications => "Notifications",
             Self::StatusBar => "Status bar",
             Self::Integrations => "Integrations",
+            Self::Code => "Code",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "Cloud Devices",
             Self::General => "General",
@@ -101,6 +104,7 @@ impl Section {
             Self::Notifications => "icons/bell.svg",
             Self::StatusBar => "icons/status-bar.svg",
             Self::Integrations => "icons/agent-generic.svg",
+            Self::Code => "icons/vscode.svg",
             #[cfg(feature = "cloud")]
             Self::CloudDevices => "icons/globe.svg",
             Self::General => "icons/settings.svg",
@@ -117,6 +121,9 @@ impl Section {
             Self::Notifications => "Stay informed without losing your place.",
             Self::StatusBar => "Keep the bottom bar to what you use.",
             Self::Integrations => "Connect the agents you work with.",
+            Self::Code => {
+                "Review code and diffs beside your terminals by connecting to a Visual Studio Code server."
+            }
             #[cfg(feature = "cloud")]
             Self::CloudDevices => {
                 "Create machines from your cloud accounts and use them as devices."
@@ -206,6 +213,7 @@ struct SettingsWindow {
     section: Section,
     themes: themes::ThemeBrowser,
     controls: controls::Controls,
+    code: controls::code::CodeSettings,
     error: Option<String>,
     status: Option<String>,
     focus: FocusHandle,
@@ -333,6 +341,7 @@ impl SettingsWindow {
             #[cfg(test)]
             layout_io: None,
             remote_history: Default::default(),
+            code: Default::default(),
             #[cfg(feature = "cloud")]
             cloud_tab: cloud_devices::first_tab(),
             #[cfg(feature = "cloud")]
@@ -502,6 +511,9 @@ impl SettingsWindow {
         if !self.finish_control_size_edit(true, cx) {
             return false;
         }
+        if !self.finish_code_edit(true, cx) {
+            self.finish_code_edit(false, cx);
+        }
         if !self.theme_dirty() && self.layout_intent.is_none() && !self.busy() {
             return true;
         }
@@ -560,8 +572,14 @@ impl SettingsWindow {
         if !self.finish_control_size_edit(true, cx) {
             self.finish_control_size_edit(false, cx);
         }
+        if !self.finish_code_edit(true, cx) {
+            self.finish_code_edit(false, cx);
+        }
         self.dismiss_control_font_picker(window, cx);
         self.section = section;
+        if section == Section::Code {
+            self.open_code_page(window, cx);
+        }
         self.body_scroll.set_offset(Point::default());
         window.focus(&self.focus, cx);
         if section == Section::Integrations {
@@ -684,6 +702,7 @@ impl Render for SettingsWindow {
         let content = match self.section {
             Section::Appearance => self.render_appearance(window, cx),
             Section::Integrations => self.render_integration_controls(cx),
+            Section::Code => self.render_code_controls(window, cx),
             #[cfg(feature = "cloud")]
             Section::CloudDevices => self.render_cloud_devices(cx),
             _ => self.render_controls(window, cx),

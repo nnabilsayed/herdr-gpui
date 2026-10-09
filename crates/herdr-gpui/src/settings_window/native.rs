@@ -9,10 +9,12 @@ mod themes;
 use fonts::verify_fonts;
 use themes::verify_themes;
 
+/// Where the Sidebar layout card painted, after the section rows.
+pub(super) const SIDEBAR_LAYOUT: usize = Section::ALL.len();
+
+/// The section rows, by index, then the Sidebar layout card.
 #[derive(Default)]
-/// One probe per section, so the count follows the sections this build has,
-/// plus one for the Sidebar layout card.
-struct Layout([Option<Bounds<Pixels>>; Section::ALL.len() + 1]);
+struct Layout([Option<Bounds<Pixels>>; SIDEBAR_LAYOUT + 1]);
 impl Global for Layout {}
 
 pub(super) fn probe(index: usize) -> impl IntoElement {
@@ -213,7 +215,7 @@ pub(crate) async fn verify_native(
                 && std::env::var_os("HERDR_TEST_SETTINGS_CAPTURE").is_some()
             {
                 let offset = settings.update(cx, |view, _, cx| -> Result<_> {
-                    let card = cx.global::<Layout>().0[Section::ALL.len()]
+                    let card = cx.global::<Layout>().0[SIDEBAR_LAYOUT]
                         .context("missing Sidebar layout paint")?;
                     Ok(f32::from(card.top() - view.body_scroll.bounds().top()) - 28.)
                 })??;

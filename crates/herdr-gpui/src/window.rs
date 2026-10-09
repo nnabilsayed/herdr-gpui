@@ -88,6 +88,8 @@ pub(crate) struct HerdrWindow {
     pub(crate) configured_terminal_size: f32,
     /// Unknown keys in the GUI config, ignored but reported; follows `config`.
     pub(crate) gui_config_diagnostic: crate::config_diagnostic::ConfigDiagnostic,
+    /// Names the missing icon font once a pane draws an icon it lacks.
+    pub(crate) icon_font_notice: crate::icon_font_notice::IconFontNotice,
     pub(crate) theme: config::Theme,
     /// The system appearance `theme` was loaded for, which is what Herdr is
     /// told. It trails the system while the theme for a new appearance
@@ -194,6 +196,8 @@ pub(crate) struct HerdrWindow {
     pub(crate) notes_width: crate::panel_resize::PanelWidth,
     /// The review's list of changed files.
     pub(crate) review_files_width: crate::panel_resize::PanelWidth,
+    /// The VS Code panel's width, one for the window's every workspace.
+    pub(crate) code_width: crate::panel_resize::PanelWidth,
     /// Each review tab's state, by its tab.
     pub(crate) reviews: std::collections::HashMap<crate::browser::TabId, crate::review::Review>,
     /// Code tabs' views, by tab.
@@ -375,6 +379,9 @@ impl HerdrWindow {
         if self.review_files_width.chosen().is_none() {
             self.review_files_width.restore(chrome.review_files_width);
         }
+        if self.code_width.chosen().is_none() {
+            self.code_width.restore(chrome.code_width);
+        }
         if !self.agent_sort_modified
             && let Some(sort) = chrome.agent_sort
         {
@@ -414,6 +421,12 @@ impl HerdrWindow {
         };
         let old_tab = focused_tab(&self.live);
         self.poll_endpoints(cx);
+        if self
+            .icon_font_notice
+            .observe(self.config.icon_font_missing, self.live.surface.as_deref())
+        {
+            cx.notify();
+        }
         self.post_system_notifications(window, cx);
         self.ring_bell(window);
         self.poll_integrations(cx);
@@ -725,6 +738,7 @@ impl HerdrWindow {
                 diagnostic.sync(config.diagnostic().as_deref());
                 diagnostic
             },
+            icon_font_notice: Default::default(),
             config,
             theme,
             theme_light: crate::app::light_appearance(cx),
@@ -802,6 +816,7 @@ impl HerdrWindow {
             deliveries: Default::default(),
             notes_width: crate::panel_resize::NOTES,
             review_files_width: crate::panel_resize::REVIEW_FILES,
+            code_width: crate::panel_resize::CODE,
             reviews: Default::default(),
             code_views: Default::default(),
             code_indexes: Default::default(),
