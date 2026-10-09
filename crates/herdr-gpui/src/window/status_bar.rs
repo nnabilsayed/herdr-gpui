@@ -37,6 +37,7 @@ impl HerdrWindow {
             .px_3()
             .bg(self.theme.panel(self.theme.surface))
             .text_color(rgb(self.theme.foreground))
+            .child(self.attach_button(cx))
             .children(self.render_usage(cx))
             .when_some(
                 self.prefix_armed
@@ -149,6 +150,23 @@ impl HerdrWindow {
                         this.open_app_update(false, window, cx);
                     })),
             )
+    }
+
+    /// Always shown: attaching a file is an action, not a status item.
+    fn attach_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        div()
+            .id("status-attach")
+            .debug_selector(|| "status-attach".into())
+            .flex_none()
+            .flex()
+            .items_center()
+            .px_2()
+            .h_full()
+            .cursor_pointer()
+            .hover(|s| s.bg(rgb(self.theme.active)))
+            .child("+")
+            .tooltip(self.hint("Attach a file or photo"))
+            .on_click(cx.listener(|this, _, window, cx| this.pick_files(window, cx)))
     }
 
     fn connection_dot(&self) -> AnyElement {

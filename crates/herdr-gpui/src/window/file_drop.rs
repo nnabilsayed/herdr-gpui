@@ -7,7 +7,7 @@ use crate::{
     connection::ConnectionBridge,
     terminal::{InputTarget, wheel_target},
 };
-use gpui::{Context, ExternalPaths, Pixels, Point, Window};
+use gpui::{Context, ExternalPaths, PathPromptOptions, Pixels, Point, Window};
 use herdr_client::protocol::ClientPaneInputEvent;
 use std::path::PathBuf;
 
@@ -27,7 +27,50 @@ impl HerdrWindow {
             return;
         };
         cx.stop_propagation();
-        if paths.paths().is_empty() {
+        self.attach_files(target, paths.paths(), window, cx);
+    }
+
+    /// The status bar's "+": choose files in the platform dialog, then attach
+    /// them to the focused pane exactly as a drop would.
+    pub(super) fn pick_files(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let picker = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: true,
+            prompt: Some("Attach".into()),
+        });
+        cx.spawn_in(window, async move |this, cx| {
+            let outcome = picker.await;
+            let _ = this.update_in(cx, |this, window, cx| match outcome {
+                Ok(Ok(Some(paths))) => {
+                    // The focus may have moved while the dialog was open.
+                    let Some(target) = this.focused_input_target().filter(|_| this.input_ready())
+                    else {
+                        this.local_error = Some("Files not attached: no pane is ready".into());
+                        cx.notify();
+                        return;
+                    };
+                    this.attach_files(target, &paths, window, cx);
+                }
+                Ok(Ok(None)) => {}
+                Ok(Err(error)) => {
+                    this.local_error = Some(format!("Unable to open file dialog: {error}"));
+                    cx.notify();
+                }
+                Err(_) => {}
+            });
+        })
+        .detach();
+    }
+
+    fn attach_files(
+        &mut self,
+        target: InputTarget,
+        paths: &[PathBuf],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if paths.is_empty() {
             return;
         }
         // Local paths mean nothing on a cloud machine, and file copies
@@ -42,16 +85,16 @@ impl HerdrWindow {
             cx.notify();
             return;
         }
-        let result = quote_paths(paths.paths()).and_then(|text| {
+        let result = quote_paths(paths).and_then(|text| {
             if self.accepts_remote_images()
-                && let [path] = paths.paths()
+                && let [path] = paths
                 && let Some(source) = super::image_source::from_path(path)
             {
                 self.start_remote_image(target.clone(), source, Some(text), cx);
                 return Ok(());
             }
             if self.accepts_remote_images() {
-                self.start_file_transfer(target.clone(), paths.paths().to_vec(), cx);
+                self.start_file_transfer(target.clone(), paths.to_vec(), cx);
                 return Ok(());
             }
             let endpoint = &self.endpoints[self.selected_endpoint];

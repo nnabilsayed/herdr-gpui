@@ -88,6 +88,8 @@ pub enum Error {
     FileDropControl,
     #[error("Dropped paths must not be empty.")]
     FileDropEmptyPath,
+    #[error("The cited text is too large to send.")]
+    CiteSize,
     #[error("Could not {operation} the local image file.")]
     ImageFile {
         operation: &'static str,

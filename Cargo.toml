@@ -102,5 +102,6 @@ unicode-segmentation = "1"
 unicode-width        = "0.2.2"
 ureq                 = "3"
 uuid                 = { features = ["serde"], version = "1" }
-windows-sys          = { features = ["Win32_Foundation", "Win32_System_Pipes"], version = "0.61.2" }
+windows              = { default-features = false, features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"], version = "0.62.2" }
+windows-sys          = { features = ["Win32_Foundation", "Win32_System_Console", "Win32_System_Pipes"], version = "0.61.2" }
 zeroize              = "=1.9.0"

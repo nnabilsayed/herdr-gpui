@@ -81,6 +81,7 @@ impl Target {
 
 #[derive(Clone, Copy)]
 enum Action {
+    Cite,
     Rename,
     SplitRight,
     SplitDown,
@@ -122,12 +123,15 @@ impl Action {
                     "right_click": if target.right_click_passthrough { "herdr" } else { "pane" },
                 }),
             ),
-            Self::Rename | Self::EditScrollback | Self::Processes | Self::Close => return None,
+            Self::Cite | Self::Rename | Self::EditScrollback | Self::Processes | Self::Close => {
+                return None;
+            }
         })
     }
 
     fn label(self, target: &Target) -> &'static str {
         match self {
+            Self::Cite => "Cite Selection",
             Self::Rename => "Rename",
             Self::SplitRight => "Split Right",
             Self::SplitDown => "Split Down",
@@ -143,7 +147,8 @@ impl Action {
     }
 }
 
-const ACTIONS: [Action; 9] = [
+const ACTIONS: [Action; 10] = [
+    Action::Cite,
     Action::Rename,
     Action::SplitRight,
     Action::SplitDown,
@@ -162,6 +167,7 @@ impl PaneMenu {
         ACTIONS
             .into_iter()
             .filter(|action| match action {
+                Action::Cite => self.cited.is_some(),
                 Action::Swap => self.target.focused.is_some(),
                 Action::Processes => self.daemon.is_some(),
                 _ => true,
@@ -172,6 +178,8 @@ impl PaneMenu {
 
 pub(super) struct PaneMenu {
     target: Target,
+    /// The highlighted text when the menu opened, offered by "Cite Selection".
+    cited: Option<String>,
     selected: Option<usize>,
     input: Option<Entity<SearchInput>>,
     pending: Option<String>,
@@ -231,8 +239,10 @@ impl HerdrWindow {
         );
         self.menu.anchor = anchor;
         self.menu.page = Some(Page::Pane);
+        let cited = self.retained_selection_text();
         self.menu.pane = Some(PaneMenu {
             target,
+            cited,
             selected: None,
             input: None,
             pending: None,
@@ -306,6 +316,13 @@ impl HerdrWindow {
             }
         };
         match action {
+            Action::Cite => {
+                let text = self.menu.pane.as_mut().and_then(|pane| pane.cited.take());
+                self.dismiss_menu(window, cx);
+                if let Some(text) = text {
+                    self.cite_into_pane(&target.pane, &text, window, cx);
+                }
+            }
             Action::Rename => {
                 let input = cx.new(SearchInput::new);
                 input.update(cx, |input, cx| {

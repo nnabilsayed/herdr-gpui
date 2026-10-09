@@ -1,4 +1,5 @@
-//! A deduplicated Dock attention count across all windows, with a QA preview.
+//! A deduplicated Dock (macOS) or taskbar (Windows) attention count across all
+//! windows, with a QA preview.
 
 use crate::endpoint::Endpoint;
 use gpui::{App, Global, WindowId};
@@ -39,6 +40,9 @@ struct Badge {
     windows: HashMap<WindowId, Contribution>,
     published: Option<usize>,
     preview: bool,
+    /// Native window handles, which Windows badges one taskbar button at a time.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    native: HashMap<WindowId, isize>,
 }
 
 impl Global for Badge {}
@@ -72,7 +76,7 @@ impl Badge {
             .count()
             .max(if self.preview { 2 } else { 0 });
         if self.published != Some(count) {
-            set_native(count);
+            set_native(count, &self.native);
             self.published = Some(count);
         }
     }
@@ -90,6 +94,9 @@ pub(super) fn install(cx: &mut App) {
         let badge = cx.default_global::<Badge>();
         badge
             .windows
+            .retain(|id, _| open.iter().any(|window| window.window_id() == *id));
+        badge
+            .native
             .retain(|id, _| open.iter().any(|window| window.window_id() == *id));
         badge.publish();
     })
@@ -120,8 +127,35 @@ pub(super) fn sync(window: WindowId, endpoints: &[Endpoint], cx: &mut App) {
     }
 }
 
-#[cfg(not(test))]
-fn set_native(count: usize) {
+/// Remembers this window's taskbar button and badges it if agents already wait.
+#[cfg(windows)]
+pub(super) fn register_window(window: &gpui::Window, cx: &mut App) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    // The trait method, not `Window::window_handle`, which returns GPUI's own handle.
+    let Ok(handle) = HasWindowHandle::window_handle(window) else {
+        return;
+    };
+    let RawWindowHandle::Win32(win32) = handle.as_raw() else {
+        return;
+    };
+    let hwnd = win32.hwnd.get();
+    let badge = cx.default_global::<Badge>();
+    if badge
+        .native
+        .insert(window.window_handle().window_id(), hwnd)
+        != Some(hwnd)
+        && let Some(count) = badge.published.filter(|count| *count > 0)
+    {
+        set_native(
+            count,
+            &HashMap::from([(window.window_handle().window_id(), hwnd)]),
+        );
+    }
+}
+
+#[cfg(all(target_os = "macos", not(test)))]
+fn set_native(count: usize, _: &HashMap<WindowId, isize>) {
     use objc2::MainThreadMarker;
     use objc2_app_kit::NSApplication;
     use objc2_foundation::NSString;
@@ -135,9 +169,19 @@ fn set_native(count: usize) {
         .setBadgeLabel(label.as_deref());
 }
 
+#[cfg(all(windows, not(test)))]
+fn set_native(count: usize, windows: &HashMap<WindowId, isize>) {
+    for hwnd in windows.values() {
+        taskbar::set(*hwnd, count);
+    }
+}
+
 // Headless tests must never initialize AppKit or change the test runner's Dock icon.
 #[cfg(test)]
-fn set_native(_: usize) {}
+fn set_native(_: usize, _: &HashMap<WindowId, isize>) {}
+
+#[cfg(windows)]
+mod taskbar;
 
 #[cfg(all(target_os = "macos", feature = "integration-test"))]
 pub(super) fn verify_native() -> anyhow::Result<()> {
@@ -149,7 +193,7 @@ pub(super) fn verify_native() -> anyhow::Result<()> {
     let tile = NSApplication::sharedApplication(main_thread).dockTile();
     let previous = tile.badgeLabel();
     for count in [2, 1, 0] {
-        set_native(count);
+        set_native(count, &HashMap::new());
         let actual = tile.badgeLabel().map(|label| label.to_string());
         let valid = if count > 0 {
             actual.as_deref() == Some(count.to_string().as_str())

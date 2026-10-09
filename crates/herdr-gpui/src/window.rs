@@ -5,6 +5,7 @@
 
 mod announcement;
 mod backdrop;
+mod cite;
 mod clipboard;
 mod commands;
 mod config_diagnostic;
@@ -469,8 +470,10 @@ impl HerdrWindow {
         self.poll_find(window, cx);
         self.follow_selection(cx);
         self.poll_copy_mode(cx);
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", windows))]
         crate::app_badge::sync(window.window_handle().window_id(), &self.endpoints, cx);
+        #[cfg(windows)]
+        crate::app_badge::register_window(window, cx);
         self.cancel_stale_image();
         self.poll_file_transfer(cx);
         self.update_workspace_dialog(window, cx);
