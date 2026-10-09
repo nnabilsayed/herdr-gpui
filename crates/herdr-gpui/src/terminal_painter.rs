@@ -539,8 +539,10 @@ impl TerminalPainter {
                         // The default background is the translucent panel
                         // fill behind the grid, which lets a window picture
                         // show through. Painting it again here would stack
-                        // the two; colors a program chose stay solid.
-                        if default && self.theme.panel_alpha < 1. {
+                        // the two; colors a program chose stay solid. A
+                        // popup (no `available`) has no panel fill under it,
+                        // and must hide the terminal text beneath.
+                        if default && self.theme.panel_alpha < 1. && available.is_some() {
                             return;
                         }
                         let right = if end == usize::from(frame.width) {
