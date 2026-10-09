@@ -1,3 +1,9 @@
+// The app is a window, not a console program: without this Windows opens a
+// console beside it. `console::attach_parent` restores CLI output.
+#![cfg_attr(
+    all(windows, not(test), not(feature = "integration-test")),
+    windows_subsystem = "windows"
+)]
 // objc 0.2's selectors expand a legacy cargo-clippy cfg in the native test adapter.
 #![cfg_attr(feature = "integration-test", allow(unexpected_cfgs))]
 
@@ -19,6 +25,7 @@ mod close_modal;
 mod config;
 mod config_diagnostic;
 mod connection;
+mod console;
 mod constants;
 mod contrast;
 mod control;
@@ -132,6 +139,7 @@ pub(crate) use state::ConnectionStatus;
 pub(crate) use {controls::Command, state::LiveState, terminal::WheelAccumulator};
 
 fn main() -> std::process::ExitCode {
+    console::attach_parent();
     let exit = app::run();
     if exit != std::process::ExitCode::SUCCESS {
         return exit;

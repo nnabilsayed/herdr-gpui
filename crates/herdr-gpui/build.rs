@@ -77,7 +77,27 @@ fn main() -> Result<(), BuildError> {
     if std::env::var_os("CARGO_FEATURE_MOCKUP").is_some() {
         mockup_scratch()?;
     }
+    windows_icon(&manifest);
     Ok(())
+}
+
+/// GPUI's Windows platform loads icon resource 1 from the executable for the
+/// window and taskbar, and Explorer shows it for the file. The precompiled
+/// resource is linked by path because this script cannot take dependencies
+/// (see `BuildError`); MSVC's linker accepts a `.res` directly. Regenerate it
+/// from the app icon with `scripts/make-windows-icon.py`.
+fn windows_icon(manifest: &std::path::Path) {
+    let windows = std::env::var("CARGO_CFG_TARGET_OS").is_ok_and(|os| os == "windows");
+    let msvc = std::env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|env| env == "msvc");
+    let resource = manifest.join("../../assets/icons/herdr-windows.res");
+    // A missing file would make Cargo rebuild forever, and the isolated crate
+    // `tests/build_identity` compiles this script in has none.
+    if resource.is_file() {
+        println!("cargo:rerun-if-changed={}", resource.display());
+        if windows && msvc {
+            println!("cargo:rustc-link-arg-bins={}", resource.display());
+        }
+    }
 }
 
 /// Points the `mockup` feature at the variants file an agent wrote, which
