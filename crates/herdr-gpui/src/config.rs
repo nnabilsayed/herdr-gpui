@@ -7,6 +7,7 @@ use crate::{
     contrast::Contrast,
     keymap::{Binding, DaemonKeys, Keymap, PaneKeys},
 };
+pub(crate) mod background;
 mod bitmap_fonts;
 mod coder;
 mod daytona;
@@ -23,6 +24,7 @@ mod table;
 mod theme;
 pub(crate) mod watch;
 
+pub use background::Background;
 pub use coder::CoderConfig;
 #[cfg(feature = "coder")]
 pub(crate) use coder::CoderFields;
@@ -87,6 +89,8 @@ pub struct Config {
     pub show_listening_ports: bool,
     /// Which status bar items show, and how compactly.
     pub status_bar: StatusBar,
+    /// The picture behind the window, and how the chrome sits over it.
+    pub background: Background,
     /// How far the app's own marks and labels stand off its chrome.
     pub contrast: Contrast,
     pub usage: crate::usage::UsageConfig,
@@ -364,6 +368,7 @@ impl Default for Config {
             agent_checkpoints: true,
             show_listening_ports: true,
             status_bar: StatusBar::default(),
+            background: Background::default(),
             contrast: Contrast::default(),
             usage: crate::usage::UsageConfig::default(),
             option_as_alt: OptionAsAlt::default(),
@@ -406,6 +411,7 @@ struct Settings {
     agent_checkpoints: Option<bool>,
     show_listening_ports: Option<bool>,
     status_bar: StatusBar,
+    background: Background,
     contrast: Contrast,
     usage: crate::usage::UsageConfig,
     option_as_alt: OptionAsAlt,
@@ -742,6 +748,8 @@ impl Config {
         config.agent_checkpoints = settings.agent_checkpoints.unwrap_or(true);
         config.show_listening_ports = settings.show_listening_ports.unwrap_or(true);
         config.status_bar = settings.status_bar;
+        settings.background.validate()?;
+        config.background = settings.background;
         config.contrast = settings.contrast;
         config.usage = settings.usage;
         config.option_as_alt = settings.option_as_alt;

@@ -581,7 +581,7 @@ impl HerdrWindow {
             .min_w_0()
             .pl(px(gap))
             .overflow_hidden()
-            .bg(rgb(self.theme.background))
+            .bg(self.theme.panel(self.theme.background))
             .child(
                 canvas(
                     move |bounds, _, cx| {

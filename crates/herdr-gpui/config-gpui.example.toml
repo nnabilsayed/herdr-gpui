@@ -340,6 +340,15 @@ size = 12
 # shortcuts = "label"
 # report_issue = "label"
 
+# A picture behind the whole window, also under Settings > Background. The
+# sidebar, terminal, and chrome paint translucent over it.
+# [background]
+# image = "C:/Users/you/Pictures/wallpaper.jpg"
+# How dark the veil over the picture is, from 0 to 0.9.
+# dim = 0.45
+# How solid the panels are, from 0.2 to 1 (1 hides the picture).
+# panel_opacity = 0.55
+
 # Optional behaviors, all off unless turned on here.
 # [features]
 # Open a space's menu when the pointer rests on its sidebar row, without a

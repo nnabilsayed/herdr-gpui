@@ -210,18 +210,23 @@ impl HerdrWindow {
     ) -> impl IntoElement {
         // The toggle leads the bar so it stays put whether or not the sidebar
         // below it is showing, and can always bring the sidebar back.
-        render(self.theme.surface, Some(self.sidebar_toggle(cx)), window)
-            .child(
-                div()
-                    .debug_selector(|| "titlebar-center".into())
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .when(self.config.usage.topbar, |center| {
-                        center.child(status::render(&self.live, &self.config.ui, &self.theme))
-                    }),
-            )
-            .child(self.titlebar_end(window, cx))
+        render(
+            self.theme.surface,
+            self.theme.panel_alpha,
+            Some(self.sidebar_toggle(cx)),
+            window,
+        )
+        .child(
+            div()
+                .debug_selector(|| "titlebar-center".into())
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .when(self.config.usage.topbar, |center| {
+                    center.child(status::render(&self.live, &self.config.ui, &self.theme))
+                }),
+        )
+        .child(self.titlebar_end(window, cx))
     }
 
     fn sidebar_toggle(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -326,7 +331,12 @@ impl HerdrWindow {
 }
 
 /// `leading` sits right after the traffic lights, ahead of the draggable center.
-pub(super) fn render(surface: u32, leading: Option<AnyElement>, window: &Window) -> Stateful<Div> {
+pub(super) fn render(
+    surface: u32,
+    alpha: f32,
+    leading: Option<AnyElement>,
+    window: &Window,
+) -> Stateful<Div> {
     let bar = div()
         .id("titlebar")
         .debug_selector(|| "titlebar".into())
@@ -334,7 +344,7 @@ pub(super) fn render(surface: u32, leading: Option<AnyElement>, window: &Window)
         .flex_none()
         .w_full()
         .h(px(HEIGHT))
-        .bg(rgb(surface).blend(rgba(0xffffff1a)))
+        .bg(rgb(surface).blend(rgba(0xffffff1a)).opacity(alpha))
         .child(div().flex_none().w(px(LEADING)).h_full())
         .children(leading);
     movable(bar, window)
@@ -382,7 +392,7 @@ pub(crate) fn header(
 ) -> Option<Stateful<Div>> {
     (cfg!(target_os = "macos") || decorations::client(window)).then(|| {
         let buttons = controls(window, theme, close);
-        render(theme.surface, None, window).children(buttons)
+        render(theme.surface, theme.panel_alpha, None, window).children(buttons)
     })
 }
 

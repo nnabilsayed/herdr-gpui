@@ -152,7 +152,11 @@ impl Config {
     /// `light:…,dark:…` value, and Herdr's light palette for `Follow Herdr`.
     pub fn theme(&self, light: bool) -> Result<Theme> {
         self.theme_with_directories(light, theme_directories)
-            .map(|theme| theme.with_contrast(self.contrast))
+            .map(|theme| {
+                theme
+                    .with_contrast(self.contrast)
+                    .with_panel_alpha(self.background.panel_alpha())
+            })
     }
 
     /// Resolves every side, so a pair is refused before it is saved rather
@@ -260,6 +264,9 @@ pub struct Theme {
     pub palette: [u32; 256],
     /// Applied by [`Theme::with_contrast`]; every theme loads as `Standard`.
     pub contrast: Contrast,
+    /// How opaque window panels paint, below 1 while a background picture
+    /// shows through them. Set by [`Theme::with_panel_alpha`].
+    pub panel_alpha: f32,
 }
 
 impl Default for Theme {
@@ -290,6 +297,7 @@ impl Default for Theme {
             sidebar: None,
             palette,
             contrast: Contrast::Standard,
+            panel_alpha: 1.,
         }
     }
 }
@@ -379,6 +387,17 @@ impl Theme {
             self.muted = self.ink(self.muted);
         }
         self
+    }
+
+    /// Lets a background picture show through the window's panels.
+    pub fn with_panel_alpha(mut self, alpha: f32) -> Self {
+        self.panel_alpha = alpha;
+        self
+    }
+
+    /// `color` as a panel fill, translucent while a background picture is set.
+    pub fn panel(&self, color: u32) -> gpui::Hsla {
+        gpui::Hsla::from(gpui::rgb(color)).opacity(self.panel_alpha)
     }
 
     fn derive_chrome(&mut self) {

@@ -1,4 +1,5 @@
 //! Prepared controls for the standalone window; persistence belongs to its serial save path.
+mod background;
 mod fonts;
 mod preferences;
 mod status_bar;
@@ -398,6 +399,7 @@ impl SettingsWindow {
 
     pub(super) fn render_controls(&self, _window: &mut Window, cx: &mut Context<Self>) -> Div {
         let content = match self.section {
+            Section::Background => self.render_background_controls(cx),
             Section::Fonts => self.render_font_controls(cx),
             Section::Indicators => self.render_indicator_controls(cx),
             Section::Sound => self.render_sound_controls(cx),
@@ -947,7 +949,7 @@ impl SettingsWindow {
             .debug_selector(|| "settings-sidebar-layout".into())
             .map(|card| {
                 #[cfg(all(feature = "integration-test", target_os = "macos"))]
-                let card = card.child(super::native::probe(7));
+                let card = card.child(super::native::probe(super::Section::ALL.len()));
                 card
             })
             .child(chooser)

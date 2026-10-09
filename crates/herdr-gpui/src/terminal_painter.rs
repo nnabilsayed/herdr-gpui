@@ -554,7 +554,14 @@ impl TerminalPainter {
                             ),
                             point(right, bottom),
                         );
-                        window.paint_quad(fill(bounds, rgb(color)));
+                        // The default background lets a window picture show
+                        // through; colors a program chose stay solid.
+                        let fill_color = if color == self.theme.background {
+                            self.theme.panel(color)
+                        } else {
+                            rgb(color).into()
+                        };
+                        window.paint_quad(fill(bounds, fill_color));
                         #[cfg(feature = "integration-test")]
                         {
                             counts.quads += 1;

@@ -232,7 +232,7 @@ impl Render for HerdrWindow {
             .min_h_0()
             .min_w_0()
             .overflow_hidden()
-            .bg(rgb(self.theme.background))
+            .bg(self.theme.panel(self.theme.background))
             .track_focus(&self.focus)
             // Screen readers and selection tools read the rows on screen and
             // the selection among them. The rows are built while GPUI
@@ -715,6 +715,7 @@ impl Render for HerdrWindow {
             .text_color(rgb(self.theme.foreground))
             .text_font(&self.config.ui)
             .text_size(px(self.config.ui.size))
+            .children(self.render_backdrop())
             .when(!merged, |root| root.child(self.render_titlebar(window, cx)))
             // Under the traffic lights a banner would hide them, so with no
             // header it moves to the window's foot.

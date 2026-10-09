@@ -48,6 +48,7 @@ impl Global for SettingsWindowHandle {}
 pub(super) enum Section {
     #[default]
     Appearance,
+    Background,
     Fonts,
     Indicators,
     Sound,
@@ -62,6 +63,7 @@ pub(super) enum Section {
 impl Section {
     const ALL: &[Self] = &[
         Self::Appearance,
+        Self::Background,
         Self::Fonts,
         Self::Indicators,
         Self::Sound,
@@ -76,6 +78,7 @@ impl Section {
     fn label(self) -> &'static str {
         match self {
             Self::Appearance => "Appearance",
+            Self::Background => "Background",
             Self::Fonts => "Fonts",
             Self::Indicators => "Indicators",
             Self::Sound => "Sound",
@@ -91,6 +94,7 @@ impl Section {
     fn icon(self) -> &'static str {
         match self {
             Self::Appearance => "icons/theme.svg",
+            Self::Background => "icons/globe.svg",
             Self::Fonts => "icons/pencil.svg",
             Self::Indicators => "icons/pulse.svg",
             Self::Sound => "icons/chart.svg",
@@ -106,6 +110,7 @@ impl Section {
     fn description(self) -> &'static str {
         match self {
             Self::Appearance => "A workspace that feels like yours.",
+            Self::Background => "A picture behind the whole window.",
             Self::Fonts => "Make every line comfortable to read.",
             Self::Indicators => "See what your agents are doing at a glance.",
             Self::Sound => "A little signal when something needs you.",

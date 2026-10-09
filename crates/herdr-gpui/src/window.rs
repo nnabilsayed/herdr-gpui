@@ -4,6 +4,7 @@
 //! because every one of them describes this window's own presentation state.
 
 mod announcement;
+mod backdrop;
 mod clipboard;
 mod commands;
 mod config_diagnostic;
