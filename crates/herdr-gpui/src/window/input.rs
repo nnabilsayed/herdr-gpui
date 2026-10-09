@@ -202,10 +202,21 @@ impl HerdrWindow {
         {
             cx.stop_propagation();
             window.prevent_default();
-        } else if (event.keystroke.modifiers.platform
+        } else if ((event.keystroke.modifiers.platform
             || (event.keystroke.modifiers.control && event.keystroke.modifiers.shift)
             || (event.keystroke.modifiers.shift && event.keystroke.key == "insert"))
-            && (event.keystroke.key.eq_ignore_ascii_case("v") || event.keystroke.key == "insert")
+            && (event.keystroke.key.eq_ignore_ascii_case("v") || event.keystroke.key == "insert"))
+            // Windows terminals paste text on Ctrl-V. An image-only clipboard
+            // still reaches the pane as the plain key, so agents that read it
+            // themselves keep working.
+            || (cfg!(windows)
+                && event.keystroke.key == "v"
+                && event.keystroke.modifiers.control
+                && !event.keystroke.modifiers.alt
+                && !event.keystroke.modifiers.shift
+                && cx
+                    .read_from_clipboard()
+                    .is_some_and(|item| item.text().is_some_and(|text| !text.is_empty())))
         {
             self.paste(cx);
             cx.stop_propagation();
