@@ -9,7 +9,8 @@ impl HerdrWindow {
     /// the panels laid out after them paint translucent over the picture.
     pub(super) fn render_backdrop(&self) -> Option<AnyElement> {
         let background = &self.config.background;
-        let image = background.image.clone()?;
+        // Only a picture that loaded, so a bad file leaves a plain window.
+        let image = background.image.clone().filter(|_| self.theme.backdrop)?;
         Some(
             div()
                 .absolute()
@@ -19,7 +20,7 @@ impl HerdrWindow {
                     img(image)
                         .size_full()
                         .object_fit(ObjectFit::Cover)
-                        // A missing or unreadable file shows the plain window.
+                        // The file can still vanish after the check.
                         .with_fallback(|| div().into_any_element()),
                 )
                 .child(

@@ -155,7 +155,7 @@ impl Config {
             .map(|theme| {
                 theme
                     .with_contrast(self.contrast)
-                    .with_panel_alpha(self.background.panel_alpha())
+                    .with_background(&self.background)
             })
     }
 
@@ -267,6 +267,9 @@ pub struct Theme {
     /// How opaque window panels paint, below 1 while a background picture
     /// shows through them. Set by [`Theme::with_panel_alpha`].
     pub panel_alpha: f32,
+    /// Whether the background picture loaded, so the window draws it and its
+    /// veil. Set by [`Theme::with_background`].
+    pub backdrop: bool,
 }
 
 impl Default for Theme {
@@ -298,6 +301,7 @@ impl Default for Theme {
             palette,
             contrast: Contrast::Standard,
             panel_alpha: 1.,
+            backdrop: false,
         }
     }
 }
@@ -389,9 +393,15 @@ impl Theme {
         self
     }
 
-    /// Lets a background picture show through the window's panels.
-    pub fn with_panel_alpha(mut self, alpha: f32) -> Self {
-        self.panel_alpha = alpha;
+    /// Lets a background picture show through the window's panels, but only
+    /// once the picture is known to load; otherwise the window stays plain.
+    pub fn with_background(mut self, background: &super::Background) -> Self {
+        self.backdrop = background.loads();
+        self.panel_alpha = if self.backdrop {
+            background.panel_opacity
+        } else {
+            1.
+        };
         self
     }
 

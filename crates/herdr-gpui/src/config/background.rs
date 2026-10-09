@@ -61,14 +61,14 @@ impl Background {
         Ok(())
     }
 
-    /// The panel alpha the chrome paints with: translucent only while a
-    /// picture is set, so a plain window keeps its solid colors.
-    pub fn panel_alpha(&self) -> f32 {
-        if self.image.is_some() {
-            self.panel_opacity
-        } else {
-            1.
-        }
+    /// Whether a picture is set and its file can be decoded. Reads only the
+    /// image header, and runs when the theme is built, not per frame.
+    pub fn loads(&self) -> bool {
+        self.image.as_deref().is_some_and(|path| {
+            image::ImageReader::open(path)
+                .and_then(|reader| reader.with_guessed_format())
+                .is_ok_and(|reader| reader.into_dimensions().is_ok())
+        })
     }
 }
 
@@ -159,13 +159,31 @@ impl Edit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Theme;
 
     #[test]
-    fn panels_are_solid_until_a_picture_is_set() {
+    fn panels_are_solid_unless_the_picture_loads() -> anyhow::Result<()> {
+        let theme = |background: &Background| Theme::default().with_background(background);
         let mut background = Background::default();
-        assert_eq!(background.panel_alpha(), 1.);
-        background.image = Some("wallpaper.png".into());
-        assert_eq!(background.panel_alpha(), 0.55);
+        assert_eq!(theme(&background).panel_alpha, 1.);
+        // Missing file: no veil, no translucency.
+        background.image = Some("does-not-exist.png".into());
+        assert!(!theme(&background).backdrop);
+        assert_eq!(theme(&background).panel_alpha, 1.);
+        // Present but not an image.
+        let directory = tempfile::tempdir()?;
+        let path = directory.path().join("broken.png");
+        fs::write(&path, "not an image")?;
+        background.image = Some(path);
+        assert!(!theme(&background).backdrop);
+        assert_eq!(theme(&background).panel_alpha, 1.);
+        // A real picture.
+        let path = directory.path().join("ok.png");
+        image::RgbaImage::new(2, 2).save(&path)?;
+        background.image = Some(path);
+        assert!(theme(&background).backdrop);
+        assert_eq!(theme(&background).panel_alpha, 0.55);
+        Ok(())
     }
 
     #[test]
@@ -190,7 +208,7 @@ layout = 'orca'
         Config::save_background_path(&Edit::Image(None), &path)?;
         let config = Config::parse(&fs::read_to_string(&path)?)?;
         assert_eq!(config.background.image, None);
-        assert_eq!(config.background.panel_alpha(), 1.);
+        assert!(!config.background.loads());
         Ok(())
     }
 
