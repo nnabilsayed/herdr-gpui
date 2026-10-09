@@ -536,6 +536,13 @@ impl TerminalPainter {
                     let row = &frame.cells[y * width..((y + 1) * width).min(frame.cells.len())];
                     let columns = range.start - y * width..range.end - y * width;
                     let mut paint = |start: usize, end: usize, color, default: bool| {
+                        // The default background is the translucent panel
+                        // fill behind the grid, which lets a window picture
+                        // show through. Painting it again here would stack
+                        // the two; colors a program chose stay solid.
+                        if default && self.theme.panel_alpha < 1. {
+                            return;
+                        }
                         let right = if end == usize::from(frame.width) {
                             background.width
                         } else {
@@ -555,14 +562,7 @@ impl TerminalPainter {
                             ),
                             point(right, bottom),
                         );
-                        // The default background lets a window picture show
-                        // through; colors a program chose stay solid.
-                        let fill_color = if default {
-                            self.theme.panel(color)
-                        } else {
-                            rgb(color).into()
-                        };
-                        window.paint_quad(fill(bounds, fill_color));
+                        window.paint_quad(fill(bounds, rgb(color)));
                         #[cfg(feature = "integration-test")]
                         {
                             counts.quads += 1;
