@@ -350,6 +350,20 @@ impl HerdrWindow {
         cx.notify();
     }
 
+    /// The text of a released selection that is still highlighted, for the
+    /// pane menu's Cite row. Only the painted cells are read here, so a
+    /// selection reaching rows the pane no longer shows is cut to what is shown.
+    pub(crate) fn retained_selection_text(&self) -> Option<String> {
+        if !self.selection_retained() {
+            return None;
+        }
+        let (selection, surface) = (self.selection.as_ref()?, self.live.surface.as_ref()?);
+        selection
+            .text(surface, self.cell_width, self.config.terminal.line_height())
+            .ok()
+            .filter(|text| !text.trim().is_empty())
+    }
+
     /// Writes the current selection to the clipboard, reporting whether the
     /// text got there.
     fn copy_selection(&mut self, cx: &mut Context<Self>) -> bool {
